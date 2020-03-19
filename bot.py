@@ -3,7 +3,7 @@
 import ephem
 import logging
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, RegexHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, RegexHandler, ConversationHandler, Filters
 
 from handlers import *
 import settings
@@ -23,7 +23,19 @@ def main():
     logging.info('Бот запускается')
 
     dp = mybot.dispatcher
+    
+    anketa = ConversationHandler(
+        entry_points=[RegexHandler('^(Заполнить анкету)$', anketa_start, pass_user_data=True)],
+        states={
+        "name": [MessageHandler(Filters.text, anketa_get_name, pass_user_data=True)],
+        "rating": [RegexHandler('^(1|2|3|4|5)$', anketa_rating, pass_user_data=True)],
+        "comment": [MessageHandler(Filters.text, anketa_comment, pass_user_data=True),
+                    CommandHandler('skip', anketa_skip_comment, pass_user_data=True)],
+        },
+        fallbacks=[MessageHandler(Filters.text | Filters.video | Filters.photo | Filters.document, dontknow, pass_user_data=True)]
+    )
     dp.add_handler(CommandHandler("start", greet_user, pass_user_data=True))
+    dp.add_handler(anketa)    
     dp.add_handler(CommandHandler("planet", planet_name, pass_user_data=True))
     dp.add_handler(CommandHandler("cat", send_cat_picture, pass_user_data=True))
     dp.add_handler(RegexHandler('^(Прислать котэ)$', send_cat_picture, pass_user_data=True))
@@ -31,6 +43,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.contact, get_contact, pass_user_data=True))
     dp.add_handler(MessageHandler(Filters.location, get_location, pass_user_data=True))
     dp.add_handler(MessageHandler(Filters.photo, check_user_photo, pass_user_data=True))
+
     
     
     dp.add_handler(MessageHandler(Filters.text, talk_to_me, pass_user_data=True))
